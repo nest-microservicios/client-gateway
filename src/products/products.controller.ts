@@ -17,35 +17,27 @@ import { PaginationDto } from 'src/common';
 import { CreateProductDto } from 'src/products/dto/products/create-product.dto';
 import { UpdateProductDto } from 'src/products/dto/products/update-product.dto';
 
-import { PRODUCTS_SERVICE } from 'src/config';
+import { NATS_SERVICE } from 'src/config';
 
 @Controller('products')
 export class ProductsController {
-  constructor(
-    @Inject(PRODUCTS_SERVICE) private readonly productsClient: ClientProxy,
-  ) {}
+  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {}
 
   @Post()
   createProduct(@Body() createProductDto: CreateProductDto) {
-    return this.productsClient.send({ cmd: 'create' }, createProductDto);
+    return this.client.send('create', createProductDto);
   }
 
   @Get()
   findAllProducts(@Query() paginationDto: PaginationDto) {
-    return this.productsClient.send({ cmd: 'find_all' }, paginationDto);
+    return this.client.send('find_all', paginationDto);
   }
 
   @Get(':id')
   async findOneProduct(@Param('id') id: string) {
-    // return this.productsClient.send({ cmd: 'find_one' }, { id }).pipe(
-    //   catchError((err) => {
-    //     throw new RpcException(err);
-    //   }),
-    // );
-
     try {
       const product = await firstValueFrom(
-        this.productsClient.send({ cmd: 'find_one' }, { id }),
+        this.client.send('find_one', { id }),
       );
       return product;
     } catch (error) {
@@ -55,7 +47,7 @@ export class ProductsController {
 
   @Delete(':id')
   deleteOneProduct(@Param('id') id: string) {
-    return this.productsClient.send({ cmd: 'remove' }, { id }).pipe(
+    return this.client.send('remove', { id }).pipe(
       catchError((err) => {
         throw new RpcException(err);
       }),
@@ -67,14 +59,11 @@ export class ProductsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
   ) {
-    return this.productsClient
-      .send(
-        { cmd: 'update' },
-        {
-          id,
-          ...updateProductDto,
-        },
-      )
+    return this.client
+      .send('update', {
+        id,
+        ...updateProductDto,
+      })
       .pipe(
         catchError((err) => {
           throw new RpcException(err);
